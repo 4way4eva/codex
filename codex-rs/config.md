@@ -92,6 +92,35 @@ http_headers = { "X-Example-Header" = "example-value" }
 env_http_headers = { "X-Example-Features": "EXAMPLE_FEATURES" }
 ```
 
+### Per-provider network tuning
+
+The following optional settings control retry behaviour and streaming idle timeouts **per model provider**. They must be specified inside the corresponding `[model_providers.<id>]` block in `config.toml`. (Older releases accepted top‑level keys; those are now ignored.)
+
+Example:
+
+```toml
+[model_providers.openai]
+name = "OpenAI"
+base_url = "https://api.openai.com/v1"
+env_key = "OPENAI_API_KEY"
+# network tuning overrides (all optional; falls back to built‑in defaults)
+request_max_retries = 4            # retry failed HTTP requests
+stream_max_retries = 10            # retry dropped SSE streams
+stream_idle_timeout_ms = 300000    # 5m idle timeout
+```
+
+#### request_max_retries
+
+How many times Codex will retry a failed HTTP request to the model provider. Defaults to `4`.
+
+#### stream_max_retries
+
+Number of times Codex will attempt to reconnect when a streaming response is interrupted. Defaults to `10`.
+
+#### stream_idle_timeout_ms
+
+How long Codex will wait for activity on a streaming response before treating the connection as lost. Defaults to `300_000` (5 minutes).
+
 ## model_provider
 
 Identifies which provider to use from the `model_providers` map. Defaults to `"openai"`. You can override the `base_url` for the built-in `openai` provider via the `OPENAI_BASE_URL` environment variable.
@@ -229,6 +258,8 @@ The default policy is `read-only`, which means commands can read any file on
 disk, but attempts to write a file or access the network will be blocked.
 
 A more relaxed policy is `workspace-write`. When specified, the current working directory for the Codex task will be writable (as well as `$TMPDIR` on macOS). Note that the CLI defaults to using the directory where it was spawned as `cwd`, though this can be overridden using `--cwd/-C`.
+
+On macOS (and soon Linux), all writable roots (including `cwd`) that contain a `.git/` folder _as an immediate child_ will configure the `.git/` folder to be read-only while the rest of the Git repository will be writable. This means that commands like `git commit` will fail, by default (as it entails writing to `.git/`), and will require Codex to ask for permission.
 
 ```toml
 # same as `--sandbox workspace-write`
@@ -444,12 +475,22 @@ Currently, `"vscode"` is the default, though Codex does not verify VS Code is in
 
 ## hide_agent_reasoning
 
-Codex intermittently emits "reasoning" events that show the model’s internal "thinking" before it produces a final answer. Some users may find these events distracting, especially in CI logs or minimal terminal output.
+Codex intermittently emits "reasoning" events that show the model's internal "thinking" before it produces a final answer. Some users may find these events distracting, especially in CI logs or minimal terminal output.
 
 Setting `hide_agent_reasoning` to `true` suppresses these events in **both** the TUI as well as the headless `exec` sub-command:
 
 ```toml
 hide_agent_reasoning = true   # defaults to false
+```
+
+## show_reasoning_content
+
+When enabled, Codex will display the raw chain-of-thought text returned by the
+model for reasoning events. This content is not moderated and may contain
+hallucinations or other undesirable text, so it is disabled by default.
+
+```toml
+show_reasoning_content = true   # defaults to false
 ```
 
 ## model_context_window
@@ -472,14 +513,5 @@ Options that are specific to the TUI.
 
 ```toml
 [tui]
-# This will make it so that Codex does not try to process mouse events, which
-# means your Terminal's native drag-to-text to text selection and copy/paste
-# should work. The tradeoff is that Codex will not receive any mouse events, so
-# it will not be possible to use the mouse to scroll conversation history.
-#
-# Note that most terminals support holding down a modifier key when using the
-# mouse to support text selection. For example, even if Codex mouse capture is
-# enabled (i.e., this is set to `false`), you can still hold down alt while
-# dragging the mouse to select text.
-disable_mouse_capture = true  # defaults to `false`
+# More to come here
 ```

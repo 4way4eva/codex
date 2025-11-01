@@ -1,12 +1,7 @@
 use crate::models::ResponseItem;
 
-/// Transcript of conversation history that is needed:
-/// - for ZDR clients for which previous_response_id is not available, so we
-///   must include the transcript with every API call. This must include each
-///   `function_call` and its corresponding `function_call_output`.
-/// - for clients using the "chat completions" API as opposed to the
-///   "responses" API.
-#[derive(Debug, Clone)]
+/// Transcript of conversation history
+#[derive(Debug, Clone, Default)]
 pub(crate) struct ConversationHistory {
     /// The oldest items are at the beginning of the vector.
     items: Vec<ResponseItem>,
@@ -35,6 +30,34 @@ impl ConversationHistory {
             }
         }
     }
+
+    pub(crate) fn keep_last_messages(&mut self, n: usize) {
+        if n == 0 {
+            self.items.clear();
+            return;
+        }
+
+        // Collect the last N message items (assistant/user), newest to oldest.
+        let mut kept: Vec<ResponseItem> = Vec::with_capacity(n);
+        for item in self.items.iter().rev() {
+            if let ResponseItem::Message { role, content, .. } = item {
+                kept.push(ResponseItem::Message {
+                    // we need to remove the id or the model will complain that messages are sent without
+                    // their reasonings
+                    id: None,
+                    role: role.clone(),
+                    content: content.clone(),
+                });
+                if kept.len() == n {
+                    break;
+                }
+            }
+        }
+
+        // Preserve chronological order (oldest to newest) within the kept slice.
+        kept.reverse();
+        self.items = kept;
+    }
 }
 
 /// Anything that is not a system message or "reasoning" message is considered
@@ -44,7 +67,8 @@ fn is_api_message(message: &ResponseItem) -> bool {
         ResponseItem::Message { role, .. } => role.as_str() != "system",
         ResponseItem::FunctionCallOutput { .. }
         | ResponseItem::FunctionCall { .. }
-        | ResponseItem::LocalShellCall { .. } => true,
-        ResponseItem::Reasoning { .. } | ResponseItem::Other => false,
+        | ResponseItem::LocalShellCall { .. }
+        | ResponseItem::Reasoning { .. } => true,
+        ResponseItem::Other => false,
     }
 }
