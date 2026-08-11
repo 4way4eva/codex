@@ -1,0 +1,25 @@
+{
+  "repository": "4way4eva/EV0LVERSE",
+  "modulePath": "afg",
+  "schemaVersion": "1.0.0",
+  "requiredFraming": "fictional-simulation",
+  "machineReadableArtifacts": [
+    "afg/data/afg-defense-grid.json",
+    "afg/data/afg-nodes.csv",
+    "afg/schemas/afg-defense-grid.schema.json",
+    "afg/manifest.json"
+  ],
+  "visualReferences": [
+    "afg/assets/AFG_Defense_Grid.svg",
+    "afg/assets/AFG_Hive_Tunnel_CrossSection.svg"
+  ],
+  "provenance": [
+    "afg/docs/SOURCE_NOTES.md",
+    "afg/docs/SOURCE_RASTER_HASHES.json"
+  ],
+  "consumerPolicy": {
+    "coordinates": "normalized-nonphysical",
+    "responseStates": "abstract-simulation-only",
+    "unsupportedSchema": "reject"
+  }
+}
